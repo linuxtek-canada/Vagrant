@@ -1,0 +1,91 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# User Variables
+BOX_OS_BASE = "ubuntu/jammy64" 
+BOX_NAME = "Ubuntu LTS"
+BOX_CPU_COUNT = "2"
+BOX_RAM_MB = "8096"
+
+LOCAL_SSH_PORT = "2222"
+LOCAL_SYNC_FOLDER = "data"
+GUEST_SYNC_FOLDER = "/media/data"
+
+NEW_USER_NAME = ""
+NEW_USER_PASSWORD = ""
+
+# All Vagrant configuration is done below. The "2" in Vagrant.configure
+# configures the configuration version (we support older styles for
+# backwards compatibility). Please don't change it unless you know what
+# you're doing.
+
+Vagrant.configure("2") do |config|
+  # Every Vagrant development environment requires a box. You can search for
+  # boxes at https://vagrantcloud.com/search.
+  
+  # Ubuntu 22.04 LTS "Jammy Jellyfish" option for base image
+  config.vm.box = BOX_OS_BASE
+    
+  # Create a forwarded port mapping which allows access to a specific port
+  # within the machine from a port on the host machine. In the example below,
+  # accessing "localhost:8080" will access port 80 on the guest machine.
+  # NOTE: This will enable public access to the opened port
+  config.vm.network "forwarded_port", guest: 22, host: LOCAL_SSH_PORT
+
+  # Share an additional folder to the guest VM. The first argument is
+  # the path on the host to the actual folder. The second argument is
+  # the path on the guest to mount the folder. And the optional third
+  # argument is a set of non-required options.
+  
+  config.vm.synced_folder LOCAL_SYNC_FOLDER, GUEST_SYNC_FOLDER, type: 'virtualbox', automount: true
+
+  # Provider-specific configuration so you can fine-tune various
+  # backing providers for Vagrant. These expose provider-specific options.
+  # Example for VirtualBox
+  
+  config.vm.provider "virtualbox" do |vb|      
+    vb.name = BOX_NAME
+    vb.memory = BOX_RAM_MB
+    vb.cpus = BOX_CPU_COUNT
+    
+    # If you need a GUI for this machine, uncomment the below line.
+    # vb.gui = true
+  end  
+  
+  # Enable provisioning with a shell script. Additional provisioners such as
+  # Ansible, Chef, Docker, Puppet and Salt are also available. Please see the
+  # documentation for more information about their specific syntax and use.
+  config.vm.provision "shell", inline: <<-SHELL
+   apt-get update
+   apt-get -y dist-upgrade
+   apt-get install -y bash build-essential module-assistant virtualbox-ose-guest-utils virtualbox-ext-pack
+   apt-get install -y ansible cifs-utils git rsync curl git iputils nmap open-vm-tools openssh-server openssh-client 
+   apt-get install -y openvpn-systemd-resolved apt-transport-https tmux htop tree   
+   apt-get install -y openvpn perl python3 python3-dev python3-pip pipenv telnet vim-common gnupg software-properties-common
+   
+   # Install AWS CLI v2
+   curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+   unzip -d /tmp /tmp/awscliv2.zip
+   /tmp/aws/install
+   rm /tmp/awscliv2.zip
+   
+   # Add Repo and Install Terraform and Packer
+   curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+   apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+   apt-get update 
+   apt-get install -y terraform packer
+  SHELL
+
+  #Additional provisioning with shell script to create customized user
+  config.vm.provision "shell", inline: <<-SHELL2  
+    sudo su -
+    useradd -m -s /bin/bash -U #{NEW_USER_NAME}
+    usermod -aG sudo #{NEW_USER_NAME}
+    echo '#{NEW_USER_NAME}:#{NEW_USER_PASSWORD}' | chpasswd
+    cp -pr /home/vagrant/.ssh /home/#{NEW_USER_NAME}/
+    chown -R #{NEW_USER_NAME}:#{NEW_USER_NAME} /home/#{NEW_USER_NAME}    
+    wait
+    shutdown -r now
+  SHELL2
+
+end
