@@ -4,10 +4,6 @@ This repository is used for storing code used for spinning up a local Linux envi
 
 The environment can be used for setting up a virtual environment and packaging Python code, or as a development environment hooked in with Visual Studio Code.
 
-## Table of Contents
-
-[TOC]
-
 ## Background
 
 [Vagrant](https://www.vagrantup.com/intro) is a tool for building and managing virtual machine environments in a single workflow.  Vagrant gives you a disposable environment and consistent workflow for developing and testing infrastructure management scripts.
